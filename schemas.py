@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List
+from datetime import date
 
 
 class GarageBase(BaseModel):
@@ -13,6 +14,10 @@ class GarageCreate(GarageBase):
     pass
 
 
+class GarageUpdate(GarageBase):
+    pass
+
+
 class GarageResponse(GarageBase):
     id: int
 
@@ -23,12 +28,12 @@ class GarageResponse(GarageBase):
 class CarBase(BaseModel):
     make: str
     model: str
-    production_year: int
-    license_plate: str
+    productionYear: int
+    licensePlate: str
 
 
 class CarCreate(CarBase):
-    garages: List[GarageResponse]
+    garageIds: List[int]
 
 
 class CarUpdate(CarBase):
@@ -38,6 +43,28 @@ class CarUpdate(CarBase):
 class CarResponse(CarBase):
     id: int
     garages: List[GarageResponse]
+
+    class Config:
+        from_attributes = True
+
+
+class MaintenanceRequestBase(BaseModel):
+    garageId: int
+    carId: int
+    scheduledDate: date
+    serviceType: str
+
+
+class MaintenanceRequestCreate(MaintenanceRequestBase):
+    pass
+
+
+class MaintenanceRequestUpdate(MaintenanceRequestBase):
+    pass
+
+
+class MaintenanceRequestResponse(MaintenanceRequestBase):
+    id: int
 
     class Config:
         from_attributes = True

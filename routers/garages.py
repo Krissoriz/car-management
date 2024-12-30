@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from db import SessionLocal
@@ -18,8 +18,11 @@ def get_db():
         db.close()
 
 
-@router.post("/garages", response_model=GarageResponse)
+@router.post("/", response_model=GarageResponse)
 def create_garage(garage: GarageCreate, db: Session = Depends(get_db)):
+    if garage.capacity < 1:
+        raise HTTPException(status_code=400, detail="Garage capacity must be greater than 0")
+
     new_garage = Garage(**garage.dict())
     db.add(new_garage)
     db.commit()
@@ -27,12 +30,12 @@ def create_garage(garage: GarageCreate, db: Session = Depends(get_db)):
     return new_garage
 
 
-@router.get("/garages", response_model=list[GarageResponse])
-def list_garages(db: Session = Depends(get_db)):
+@router.get("/all", response_model=list[GarageResponse], operation_id="list_all_garages")
+def list_all_garages(db: Session = Depends(get_db)):
     return db.query(Garage).all()
 
 
-@router.get("/garages/{garage_id}", response_model=GarageResponse)
+@router.get("/{garage_id}", response_model=GarageResponse)
 def get_garage(garage_id: int, db: Session = Depends(get_db)):
     garage = db.query(Garage).filter(Garage.id == garage_id).first()
     if not garage:
@@ -40,7 +43,7 @@ def get_garage(garage_id: int, db: Session = Depends(get_db)):
     return garage
 
 
-@router.put("/garages/{garage_id}", response_model=GarageResponse)
+@router.put("/{garage_id}", response_model=GarageResponse)
 def update_garage(garage_id: int, updated_data: GarageCreate, db: Session = Depends(get_db)):
     garage = db.query(Garage).filter(Garage.id == garage_id).first()
     if not garage:
@@ -54,7 +57,7 @@ def update_garage(garage_id: int, updated_data: GarageCreate, db: Session = Depe
     return garage
 
 
-@router.delete("/garages/{garage_id}")
+@router.delete("/{garage_id}")
 def delete_garage(garage_id: int, db: Session = Depends(get_db)):
     garage = db.query(Garage).filter(Garage.id == garage_id).first()
     if not garage:
@@ -65,7 +68,7 @@ def delete_garage(garage_id: int, db: Session = Depends(get_db)):
     return {"detail": "Garage deleted successfully"}
 
 
-@router.get("/garages", response_model=list[GarageResponse])
+@router.get("/", response_model=list[GarageResponse])
 def list_garages(city: str = None, db: Session = Depends(get_db)):
     query = db.query(Garage)
     if city:
@@ -73,47 +76,38 @@ def list_garages(city: str = None, db: Session = Depends(get_db)):
     return query.all()
 
 
-@router.get("/garages/{garage_id}/stats")
-def get_garage_stats(
-    garage_id: int,
-    start_date: str,
-    end_date: str,
+@router.get("/dailyAvailabilityReport")
+def daily_availability_report(
+    garageId: int,
+    startDate: date = Query(..., description="Start date in format YYYY-MM-DD"),
+    endDate: date = Query(..., description="End date in format YYYY-MM-DD"),
     db: Session = Depends(get_db),
 ):
-    # Валидация на входните дати
-    try:
-        start_date = datetime.strptime(start_date, "%Y-%m-%d")
-        end_date = datetime.strptime(end_date, "%Y-%m-%d")
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use 'YYYY-MM-DD'.")
 
-    if start_date > end_date:
+    if startDate > endDate:
         raise HTTPException(status_code=400, detail="Start date must be before end date.")
 
-    # Проверка дали сервизът съществува
-    garage = db.query(Garage).filter(Garage.id == garage_id).first()
+    garage = db.query(Garage).filter(Garage.id == garageId).first()
     if not garage:
         raise HTTPException(status_code=404, detail="Garage not found")
 
-    # Генериране на статистика за всяка дата в диапазона
-    current_date = start_date
-    stats = []
+    current_date = startDate
+    report = []
 
-    while current_date <= end_date:
-        # Брой заявки за текущата дата
+    while current_date <= endDate:
+
         request_count = (
             db.query(func.count(MaintenanceRequest.id))
             .filter(
-                MaintenanceRequest.garage_id == garage_id,
-                MaintenanceRequest.date == current_date,
+                MaintenanceRequest.garageId == garageId,
+                MaintenanceRequest.scheduledDate == current_date,
             )
             .scalar()
         )
 
-        # Свободен капацитет
         free_capacity = max(garage.capacity - request_count, 0)
 
-        stats.append({
+        report.append({
             "date": current_date.strftime("%Y-%m-%d"),
             "requests": request_count,
             "free_capacity": free_capacity,
@@ -121,4 +115,4 @@ def get_garage_stats(
 
         current_date += timedelta(days=1)
 
-    return stats
+    return report

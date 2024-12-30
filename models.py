@@ -30,17 +30,21 @@ class Car(Base):
     id = Column(Integer, primary_key=True, index=True)
     make = Column(String)
     model = Column(String)
-    production_year = Column(Integer)
-    license_plate = Column(String)
+    productionYear = Column(Integer)
+    licensePlate = Column(String)
 
     garages = relationship("Garage", secondary=car_garage_association, back_populates="cars")
+    requests = relationship("MaintenanceRequest", back_populates="car")
 
 
 class MaintenanceRequest(Base):
     __tablename__ = "maintenance_requests"
 
     id = Column(Integer, primary_key=True, index=True)
-    garage_id = Column(Integer, ForeignKey("garages.id"), nullable=False)
-    date = Column(Date, nullable=False)
+    garageId = Column(Integer, ForeignKey("garages.id"), nullable=False)
+    carId = Column(Integer, ForeignKey("cars.id"), nullable=False)
+    scheduledDate = Column(Date, nullable=False)
+    serviceType = Column(String, nullable=False)
 
     garage = relationship("Garage", back_populates="requests")
+    car = relationship("Car", back_populates="requests")
