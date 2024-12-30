@@ -103,7 +103,7 @@ def monthly_requests_report(
 
     query = db.query(
         func.strftime("%Y-%m", MaintenanceRequest.scheduledDate).label("month"),
-        func.count(MaintenanceRequest.id).label("total_requests")
+        func.count(MaintenanceRequest.id).label("requests")
     ).filter(
         MaintenanceRequest.scheduledDate >= start_date,
         MaintenanceRequest.scheduledDate <= end_date
@@ -121,7 +121,7 @@ def monthly_requests_report(
                 "year": int(row.month.split("-")[0]),
                 "monthValue": int(row.month.split("-")[1])
             },
-            "total_requests": row.total_requests
+            "requests": row.requests
         }
         for row in results
     ]

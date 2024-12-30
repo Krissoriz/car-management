@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta, date
+from datetime import timedelta, date
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from db import SessionLocal
@@ -78,9 +78,9 @@ def list_garages(city: str = None, db: Session = Depends(get_db)):
 
 @router.get("/dailyAvailabilityReport")
 def daily_availability_report(
-    garageId: int,
-    startDate: date = Query(..., description="Start date in format YYYY-MM-DD"),
-    endDate: date = Query(..., description="End date in format YYYY-MM-DD"),
+    garageId: int = None,
+    startDate: date = None,
+    endDate: date = None,
     db: Session = Depends(get_db),
 ):
 
@@ -95,7 +95,6 @@ def daily_availability_report(
     report = []
 
     while current_date <= endDate:
-
         request_count = (
             db.query(func.count(MaintenanceRequest.id))
             .filter(
@@ -110,9 +109,10 @@ def daily_availability_report(
         report.append({
             "date": current_date.strftime("%Y-%m-%d"),
             "requests": request_count,
-            "free_capacity": free_capacity,
+            "availableCapacity": free_capacity,
         })
 
         current_date += timedelta(days=1)
 
     return report
+
